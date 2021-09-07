@@ -3,8 +3,10 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"net"
 	"os"
 
@@ -47,33 +49,37 @@ func main() {
 		os.Exit(1)
 	}
 
-	// TODO: initialize server/client handshake
-	if err := c.Initialize(context.TODO()); err != nil {
-		fmt.Printf("error with initial protocol handshake with server: %v\n", err)
+	if err := run(c, s, os.Stdout, os.Args[1:]); err != nil {
+		fmt.Printf("error running earthly-lsp: %v\n", err)
 		os.Exit(1)
+	}
+}
+
+func run(c *client.Client, s *server.Server, w io.Writer, args []string) error {
+	if err := c.Initialize(context.TODO()); err != nil {
+		return fmt.Errorf("error with initial protocol handshake with server: %w", err)
 	}
 
 	// TODO: handle more client subcommands as more of the LSP protocol spec is implemented
-	switch subcommand := os.Args[1]; subcommand {
+	switch subcommand := args[0]; subcommand {
 	case "definition":
-		if len(os.Args) < 3 {
-			fmt.Println("expected at least 1 subcommand for definitions")
-			os.Exit(1)
+		if len(args) < 2 {
+			return errors.New("expected at least 1 subcommand for definitions")
 		}
 
-		input := os.Args[2]
+		input := args[1]
 		locs, err := c.Definition(input)
 		if err != nil {
-			fmt.Printf("error getting definition location: %v\n", err)
-			os.Exit(1)
+			return fmt.Errorf("error getting definition location: %w", err)
 		}
 
-		enc := json.NewEncoder(os.Stdout)
+		enc := json.NewEncoder(w)
 		if err := enc.Encode(locs); err != nil {
-			fmt.Printf("error encoding json to stdout: %v", err)
-			os.Exit(1)
+			return fmt.Errorf("error encoding json to stdout: %w", err)
 		}
 	default:
-		fmt.Printf("unexpected subcommand: %q\n", subcommand)
+		return fmt.Errorf("unexpected subcommand: %q", subcommand)
 	}
+
+	return nil
 }

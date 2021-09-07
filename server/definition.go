@@ -18,7 +18,11 @@ var (
 	targetRegex = `\+[a-zA-Z]+`
 )
 
-// Definition returns the location of a target definition if the provided parameters is referencing an Earthfile target
+// Definition returns the location of a target definition if the provided parameters is referencing an Earthfile target.
+// The current implementation has many known limitations at the moment, such as:
+//   - Targets referenced from other Earthfiles is not supported yet
+//   - Only Earthfile command statements are checked. With, If and For statements are ignored.
+//   - There is no caching of Earthfile ASTs, so Earthfiles are parsed and reloaded for every request
 func (s *Server) Definition(ctx context.Context, params *protocol.DefinitionParams) (result []protocol.Location, err error) {
 	uri := params.TextDocumentPositionParams.TextDocument.URI
 
@@ -66,7 +70,7 @@ func (s *Server) Definition(ctx context.Context, params *protocol.DefinitionPara
 	return locs, nil
 }
 
-// targetForPosition returns a target name if the provided position is referencing a target
+// targetForPosition returns a target name if the provided position is referencing a target.
 func targetForPosition(earthFile spec.Earthfile, line, col int) (string, error) {
 	var targetName string
 	for _, target := range earthFile.Targets {
@@ -77,11 +81,7 @@ func targetForPosition(earthFile spec.Earthfile, line, col int) (string, error) 
 			continue
 		}
 
-		// target contains the definition
-		// now go through this target and find the actual line through each statement
 		for _, statement := range target.Recipe {
-			// for now we can assume statements are single-lined entry where
-			// start and end source location is the same.
 			statementLine := statement.SourceLocation.StartLine
 			if line != statementLine {
 				continue
@@ -138,7 +138,6 @@ func targetForPosition(earthFile spec.Earthfile, line, col int) (string, error) 
 // parseTarget extracts the target name if one exists in a given statement argument
 func parseTarget(arg string) string {
 	r := regexp.MustCompile(targetRegex)
-	// r.FindAllStringSubmatchIndex(arg, -1)
 	target := r.FindString(arg)
 	if target == "" {
 		return ""

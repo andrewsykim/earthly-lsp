@@ -70,7 +70,7 @@ docker:
 	}
 
 	results := &bytes.Buffer{}
-	if err := run(c, s, results, []string{"definition", earthFile.Name() + ":18:11"}); err != nil {
+	if err := run(c, results, []string{"definition", earthFile.Name() + ":18:11"}); err != nil {
 		t.Errorf("error running earthly-lsp: %v", err)
 	}
 

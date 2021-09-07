@@ -14,9 +14,13 @@ import (
 	"earthly-lsp.dev/server"
 )
 
+const (
+	defaultAddr = "127.0.0.1:8080"
+)
+
 func main() {
-	var addr string
-	flag.StringVar(&addr, "addr", "", "the remote address for the Earthly language server")
+	var remote string
+	flag.StringVar(&remote, "remote", "", "the remote address for the Earthly language server")
 	flag.Parse()
 
 	if len(os.Args) < 2 {
@@ -24,38 +28,39 @@ func main() {
 		os.Exit(1)
 	}
 
-	if addr == "" {
-		addr = "127.0.0.1:8080"
-	}
+	// only start the LSP server locally if a remote address is not provided.
+	if remote == "" {
+		remote = defaultAddr
 
-	l, err := net.Listen("tcp", addr)
-	if err != nil {
-		fmt.Printf("error running server: %v\n", err)
-		os.Exit(1)
-	}
-	defer l.Close()
-
-	s := server.NewServer(l)
-	go func() {
-		if err := s.Run(); err != nil {
+		l, err := net.Listen("tcp", remote)
+		if err != nil {
 			fmt.Printf("error running server: %v\n", err)
 			os.Exit(1)
 		}
-	}()
+		defer l.Close()
 
-	c := client.NewClient(addr)
+		s := server.NewServer(l)
+		go func() {
+			if err := s.Run(); err != nil {
+				fmt.Printf("error running server: %v\n", err)
+				os.Exit(1)
+			}
+		}()
+	}
+
+	c := client.NewClient(remote)
 	if err := c.Dial(); err != nil {
 		fmt.Printf("error connecting to server: %v\n", err)
 		os.Exit(1)
 	}
 
-	if err := run(c, s, os.Stdout, os.Args[1:]); err != nil {
+	if err := run(c, os.Stdout, os.Args[1:]); err != nil {
 		fmt.Printf("error running earthly-lsp: %v\n", err)
 		os.Exit(1)
 	}
 }
 
-func run(c *client.Client, s *server.Server, w io.Writer, args []string) error {
+func run(c *client.Client, w io.Writer, args []string) error {
 	if err := c.Initialize(context.TODO()); err != nil {
 		return fmt.Errorf("error with initial protocol handshake with server: %w", err)
 	}

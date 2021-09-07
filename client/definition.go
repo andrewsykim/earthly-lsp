@@ -11,7 +11,7 @@ import (
 )
 
 func (c *Client) Definition(input string) ([]protocol.Location, error) {
-	path, col, char, err := parseInput(input)
+	path, line, char, err := parseInput(input)
 	if err != nil {
 		return nil, err
 	}
@@ -20,7 +20,7 @@ func (c *Client) Definition(input string) ([]protocol.Location, error) {
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{URI: uri.File(path)},
 			Position: protocol.Position{
-				Line:      uint32(col),
+				Line:      uint32(line),
 				Character: uint32(char),
 			},
 		},
@@ -37,9 +37,9 @@ func parseInput(input string) (string, int, int, error) {
 	}
 
 	path := split[0]
-	col, err := strconv.Atoi(split[1])
+	line, err := strconv.Atoi(split[1])
 	if err != nil {
-		return "", 0, 0, fmt.Errorf("error converting column position to int: %v", err)
+		return "", 0, 0, fmt.Errorf("error converting line position to int: %v", err)
 	}
 
 	char, err := strconv.Atoi(split[2])
@@ -47,5 +47,5 @@ func parseInput(input string) (string, int, int, error) {
 		return "", 0, 0, fmt.Errorf("error converting character position to int: %v", err)
 	}
 
-	return path, col, char, nil
+	return path, line, char, nil
 }
